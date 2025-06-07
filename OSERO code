@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>オセロゲーム（スマホ対応）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin: 20px 0 10px;
+      font-size: 6vw;
+    }
+    #home {
+      margin: 20px;
+    }
+    #ratingDisplay {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px 0;
+    }
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      font-size: 1em;
+      border-radius: 10px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      width: 80%;
+      max-width: 300px;
+    }
+    button:hover {
+      background-color: #388E3C;
+    }
+    #gameArea {
+      display: none;
+      margin: 0 auto;
+      width: 100%;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 0 auto;
+      width: 90vw;
+      max-width: 400px;
+    }
+    td {
+      aspect-ratio: 1 / 1;
+      background: green;
+      border: 2px solid #003300;
+      cursor: pointer;
+      position: relative;
+    }
+    .disc {
+      width: 80%;
+      height: 80%;
+      border-radius: 50%;
+      position: absolute;
+      top: 10%;
+      left: 10%;
+    }
+    .black {
+      background: black;
+    }
+    .white {
+      background: white;
+    }
+    #status {
+      margin-top: 15px;
+      font-size: 1.2em;
+    }
+    #backButton {
+      margin-top: 20px;
+      display: none;
+      width: 80%;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>オセロゲーム</h1>
+
+  <!-- ホーム画面 -->
+  <div id="home">
+    <div id="ratingDisplay">現在のレート: <span id="rating">100</span></div>
+    <div class="button-group">
+      <button onclick="startGame('2p')">2人対戦モード</button>
+      <button onclick="startGame('cpu')">CPU対戦モード</button>
+    </div>
+    <div class="button-group">
+      <button onclick="resetRating()">レートをリセット</button>
+    </div>
+  </div>
+
+  <!-- ゲーム画面 -->
+  <div id="gameArea">
+    <div id="status"></div>
+    <table id="board"></table>
+    <button id="backButton" onclick="returnToHome()">ホームに戻る</button>
+  </div>
+
+  <script>
+    const SIZE = 8;
+    let board = [], currentPlayer = 1, mode = '2p';
+    const dx = [-1,-1,-1,0,1,1,1,0], dy = [-1,0,1,1,1,0,-1,-1];
+
+    let rating = parseInt(localStorage.getItem("rating") || "100");
+
+    function updateRatingDisplay() {
+      document.getElementById("rating").textContent = rating;
+    }
+
+    function startGame(selectedMode) {
+      mode = selectedMode;
+      currentPlayer = 1;
+      board = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0));
+      board[3][3] = 2; board[3][4] = 1;
+      board[4][3] = 1; board[4][4] = 2;
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('gameArea').style.display = 'block';
+      document.getElementById('backButton').style.display = 'none';
+      updateRatingDisplay();
+      render();
+      updateStatus();
+    }
+
+    function render() {
+      const table = document.getElementById('board');
+      table.innerHTML = '';
+      for (let y = 0; y < SIZE; y++) {
+        const row = document.createElement('tr');
+        for (let x = 0; x < SIZE; x++) {
+          const cell = document.createElement('td');
+          if (board[y][x] !== 0) {
+            const disc = document.createElement('div');
+            disc.classList.add('disc', board[y][x] === 1 ? 'black' : 'white');
+            cell.appendChild(disc);
+          }
+          cell.addEventListener('click', () => handleMove(x, y));
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+    }
+
+    function handleMove(x, y) {
+      if (board[y][x] !== 0 || !canPlace(x, y, currentPlayer)) return;
+
+      placeDisc(x, y, currentPlayer);
+      currentPlayer = 3 - currentPlayer;
+      render();
+
+      if (!hasValidMove(currentPlayer)) {
+        currentPlayer = 3 - currentPlayer;
+        if (!hasValidMove(currentPlayer)) {
+          endGame();
+          return;
+        } else {
+          alert("パスされました");
+        }
+      }
+
+      updateStatus();
+
+      if (mode === 'cpu' && currentPlayer === 2) {
+        setTimeout(cpuMove, 500);
+      }
+    }
+
+    function placeDisc(x, y, player) {
+      board[y][x] = player;
+      for (let d = 0; d < 8; d++) {
+        const toFlip = [];
+        let nx = x + dx[d], ny = y + dy[d];
+        while (inBounds(nx, ny) && board[ny][nx] === 3 - player) {
+          toFlip.push([nx, ny]);
+          nx += dx[d]; ny += dy[d];
+        }
+        if (inBounds(nx, ny) && board[ny][nx] === player) {
+          for (const [fx, fy] of toFlip) board[fy][fx] = player;
+        }
+      }
+    }
+
+    function canPlace(x, y, player) {
+      if (board[y][x] !== 0) return false;
+      for (let d = 0; d < 8; d++) {
+        let nx = x + dx[d], ny = y + dy[d], hasOpponent = false;
+        while (inBounds(nx, ny) && board[ny][nx] === 3 - player) {
+          hasOpponent = true;
+          nx += dx[d]; ny += dy[d];
+        }
+        if (hasOpponent && inBounds(nx, ny) && board[ny][nx] === player) return true;
+      }
+      return false;
+    }
+
+    function hasValidMove(player) {
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          if (canPlace(x, y, player)) return true;
+        }
+      }
+      return false;
+    }
+
+    function endGame() {
+      let black = 0, white = 0;
+      for (let row of board) {
+        for (let cell of row) {
+          if (cell === 1) black++;
+          if (cell === 2) white++;
+        }
+      }
+      let result = `終了！ 黒: ${black}, 白: ${white} → `;
+      if (black > white) {
+        result += "黒の勝ち！";
+        if (mode === 'cpu') rating += (black - white) * 2;
+      } else if (black < white) {
+        result += "白の勝ち！";
+        if (mode === 'cpu') rating -= 20;
+      } else {
+        result += "引き分け！";
+      }
+
+      localStorage.setItem("rating", rating.toString());
+      updateRatingDisplay();
+
+      document.getElementById('status').innerText = result;
+      document.getElementById('backButton').style.display = 'inline-block';
+    }
+
+    function updateStatus() {
+      document.getElementById('status').innerText =
+        (currentPlayer === 1 ? "黒" : "白") + "の番です";
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && x < SIZE && y >= 0 && y < SIZE;
+    }
+
+    function cpuMove() {
+      const moves = [];
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          if (canPlace(x, y, 2)) moves.push([x, y]);
+        }
+      }
+      if (moves.length === 0) return;
+
+      let bestMove;
+      if (rating < 200) {
+        bestMove = moves[Math.floor(Math.random() * moves.length)];
+      } else if (rating < 300) {
+        const corners = moves.filter(([x, y]) =>
+          (x === 0 || x === SIZE - 1) && (y === 0 || y === SIZE - 1)
+        );
+        bestMove = corners.length > 0
+          ? corners[Math.floor(Math.random() * corners.length)]
+          : moves[Math.floor(Math.random() * moves.length)];
+      } else {
+        let maxGain = -1;
+        for (const [x, y] of moves) {
+          const gain = simulateGain(x, y, 2);
+          if (gain > maxGain) {
+            maxGain = gain;
+            bestMove = [x, y];
+          }
+        }
+      }
+
+      if (bestMove) handleMove(bestMove[0], bestMove[1]);
+    }
+
+    function simulateGain(x, y, player) {
+      let gain = 0;
+      for (let d = 0; d < 8; d++) {
+        let nx = x + dx[d], ny = y + dy[d];
+        let line = 0;
+        while (inBounds(nx, ny) && board[ny][nx] === 3 - player) {
+          line++; nx += dx[d]; ny += dy[d];
+        }
+        if (line > 0 && inBounds(nx, ny) && board[ny][nx] === player) {
+          gain += line;
+        }
+      }
+      return gain;
+    }
+
+    function returnToHome() {
+      document.getElementById('gameArea').style.display = 'none';
+      document.getElementById('home').style.display = 'block';
+      updateRatingDisplay();
+    }
+
+    function resetRating() {
+      if (confirm("本当にレートをリセットしますか？")) {
+        rating = 100;
+        localStorage.setItem("rating", rating.toString());
+        updateRatingDisplay();
+        alert("レートを100にリセットしました。");
+      }
+    }
+
+    updateRatingDisplay();
+  </script>
+</body>
+</html>
