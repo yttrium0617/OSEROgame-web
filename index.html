@@ -2,8 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>オセロゲーム（スマホ対応）</title>
+  <title>オセロゲーム（レート機能付き）</title>
   <style>
     body {
       font-family: sans-serif;
@@ -14,7 +13,6 @@
     }
     h1 {
       margin: 20px 0 10px;
-      font-size: 6vw;
     }
     #home {
       margin: 20px;
@@ -24,51 +22,43 @@
       margin-bottom: 10px;
     }
     .button-group {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 10px 0;
+      margin: 20px 0;
     }
     button {
-      padding: 12px 20px;
+      padding: 10px 20px;
       margin: 10px;
       font-size: 1em;
-      border-radius: 10px;
+      border-radius: 8px;
       border: none;
       background-color: #4CAF50;
       color: white;
       cursor: pointer;
-      width: 80%;
-      max-width: 300px;
     }
     button:hover {
       background-color: #388E3C;
     }
     #gameArea {
       display: none;
-      margin: 0 auto;
-      width: 100%;
     }
     table {
       border-collapse: collapse;
       margin: 0 auto;
-      width: 90vw;
-      max-width: 400px;
     }
     td {
-      aspect-ratio: 1 / 1;
+      width: 50px;
+      height: 50px;
       background: green;
       border: 2px solid #003300;
       cursor: pointer;
       position: relative;
     }
     .disc {
-      width: 80%;
-      height: 80%;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       position: absolute;
-      top: 10%;
-      left: 10%;
+      top: 5px;
+      left: 5px;
     }
     .black {
       background: black;
@@ -78,13 +68,11 @@
     }
     #status {
       margin-top: 15px;
-      font-size: 1.2em;
+      font-size: 1.1em;
     }
     #backButton {
       margin-top: 20px;
       display: none;
-      width: 80%;
-      max-width: 300px;
     }
   </style>
 </head>
